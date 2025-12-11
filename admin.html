@@ -2,10 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Dashboard</title>
+    <title>Admin Dashboard - Secure</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        /* This overlay covers the whole screen until logged in */
         #login-overlay { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: #212529; z-index: 9999; 
@@ -20,7 +19,7 @@
     <div class="card p-4 text-center" style="width: 300px;">
         <h4>Admin Login</h4>
         <input type="password" id="adminPass" class="form-control mb-3" placeholder="Enter Password">
-        <button onclick="checkAdmin()" class="btn btn-primary w-100">Login</button>
+        <button onclick="checkAdmin()" class="btn btn-primary w-100" id="loginBtn">Login</button>
         <p class="text-danger mt-2 small" id="loginMsg"></p>
     </div>
 </div>
@@ -46,8 +45,8 @@
             <h5>Add New Route</h5>
             <form onsubmit="saveRoute(event)">
                 <div class="row mb-3">
-                    <div class="col"><input type="text" id="busName" class="form-control" placeholder="Bus Name (e.g. SuperFast)" required></div>
-                    <div class="col"><input type="text" id="busNumber" class="form-control" placeholder="Bus Number (e.g. KL-01)" required></div>
+                    <div class="col"><input type="text" id="busName" class="form-control" placeholder="Bus Name" required></div>
+                    <div class="col"><input type="text" id="busNumber" class="form-control" placeholder="Bus Number" required></div>
                 </div>
                 <div class="mb-3">
                     <select id="category" class="form-select">
@@ -55,22 +54,21 @@
                         <option>Private Bus</option>
                     </select>
                 </div>
-                
-                <h6>Stops (Include Start & End)</h6>
+                <h6>Stops</h6>
                 <div id="stops-container">
                     <div class="input-group mb-2">
                         <span class="input-group-text">Start</span>
-                        <input type="text" id="startPoint" class="form-control" placeholder="Starting Location">
+                        <input type="text" id="startPoint" class="form-control" placeholder="Start Location">
                         <input type="time" id="startTime" class="form-control">
                     </div>
                     <div class="input-group mb-2">
-                        <span class="input-group-text">Stop 1</span>
-                        <input type="text" class="form-control stop-loc" placeholder="Intermediate Stop">
+                        <span class="input-group-text">Via</span>
+                        <input type="text" class="form-control stop-loc" placeholder="Stop 1">
                         <input type="time" class="form-control stop-time">
                     </div>
                     <div class="input-group mb-2">
-                        <span class="input-group-text">Stop 2</span>
-                        <input type="text" class="form-control stop-loc" placeholder="Intermediate Stop">
+                        <span class="input-group-text">Via</span>
+                        <input type="text" class="form-control stop-loc" placeholder="Stop 2">
                         <input type="time" class="form-control stop-time">
                     </div>
                     <div class="input-group mb-2">
@@ -87,14 +85,13 @@
     <div id="driver-section" class="d-none">
         <div class="card p-4 border-warning">
             <h5>Create Driver Login</h5>
-            <p class="text-muted small">Drivers use these details to login to the driver portal.</p>
             <form onsubmit="createDriver(event)">
                 <div class="mb-3">
-                    <label>Bus Number (Username)</label>
-                    <input type="text" id="driverBusID" class="form-control" placeholder="e.g. KL-01-AB-1234" required>
+                    <label>Bus Number (ID)</label>
+                    <input type="text" id="driverBusID" class="form-control" placeholder="e.g. KL-01" required>
                 </div>
                 <div class="mb-3">
-                    <label>Password</label>
+                    <label>Set Password</label>
                     <input type="text" id="driverPass" class="form-control" placeholder="e.g. 1234" required>
                 </div>
                 <button type="submit" class="btn btn-warning w-100">Create Account</button>
@@ -105,7 +102,8 @@
 
 <script type="module">
     import { db } from './firebase-config.js';
-    import { collection, addDoc, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { collection, addDoc, setDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
     // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyDcWwo0m2eS1ndyC06U1G_JF1J7Y1WNlfQ",
@@ -117,20 +115,43 @@ const firebaseConfig = {
   measurementId: "G-B7TMFX0F21"
 };
 
-    console.log("Firebase Script Loaded");
+    // --- 1. SECURE ADMIN LOGIN ---
+    window.checkAdmin = async function() {
+        const inputPass = document.getElementById('adminPass').value.trim();
+        const msg = document.getElementById('loginMsg');
+        const btn = document.getElementById('loginBtn');
+        
+        if(!inputPass) return;
+        
+        btn.innerText = "Checking...";
+        msg.innerText = "";
 
-    // 1. MAKE FUNCTION GLOBAL (Fixes the button issue)
-    window.checkAdmin = function() {
-        console.log("Login clicked");
-        const pass = document.getElementById('adminPass').value.trim();
-        if(pass === "admin123") { 
-            document.getElementById('login-overlay').style.display = "none";
-        } else {
-            document.getElementById('loginMsg').innerText = "Wrong Password";
+        try {
+            // Fetch the real password from Firestore
+            const docRef = doc(db, "credentials", "admin_master");
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const realPassword = docSnap.data().password;
+                
+                if (inputPass === realPassword) {
+                    document.getElementById('login-overlay').style.display = "none";
+                } else {
+                    msg.innerText = "Incorrect Password";
+                    btn.innerText = "Login";
+                }
+            } else {
+                msg.innerText = "Error: 'admin_master' document missing in Database.";
+                btn.innerText = "Login";
+            }
+        } catch (error) {
+            console.error(error);
+            msg.innerText = "Connection Error";
+            btn.innerText = "Login";
         }
     };
 
-    // 2. Tab Switching
+    // --- 2. TABS ---
     window.switchTab = function(tab) {
         if(tab === 'route') {
             document.getElementById('route-section').classList.remove('d-none');
@@ -145,7 +166,7 @@ const firebaseConfig = {
         }
     };
 
-    // 3. Create Driver
+    // --- 3. CREATE DRIVER ---
     window.createDriver = async function(e) {
         e.preventDefault();
         const busID = document.getElementById('driverBusID').value.toUpperCase().trim();
@@ -154,21 +175,16 @@ const firebaseConfig = {
             await setDoc(doc(db, "credentials", busID), { password: pass });
             alert("Driver Account Created!");
             e.target.reset();
-        } catch (error) { 
-            alert("Error: " + error.message); 
-        }
+        } catch (error) { alert("Error: " + error.message); }
     };
 
-    // 4. Save Route
+    // --- 4. SAVE ROUTE ---
     window.saveRoute = async function(e) {
         e.preventDefault();
-        console.log("Saving route...");
         
         let stops = [];
-        // Add Start
         stops.push({ name: document.getElementById('startPoint').value, time: document.getElementById('startTime').value });
         
-        // Add Middle Stops
         document.querySelectorAll('#stops-container .input-group').forEach(div => {
             if(div.querySelector('.stop-loc')) {
                 const loc = div.querySelector('.stop-loc').value;
@@ -177,7 +193,6 @@ const firebaseConfig = {
             }
         });
         
-        // Add End
         stops.push({ name: document.getElementById('endPoint').value, time: document.getElementById('endTime').value });
 
         const busData = {
@@ -190,12 +205,9 @@ const firebaseConfig = {
 
         try {
             await addDoc(collection(db, "routes"), busData);
-            alert("Route Saved Successfully!");
+            alert("Route Saved!");
             e.target.reset();
-        } catch (err) { 
-            console.error(err);
-            alert("Error saving route"); 
-        }
+        } catch (err) { console.error(err); alert("Error saving data"); }
     };
 </script>
 </body>
