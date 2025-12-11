@@ -90,25 +90,7 @@
 </div>
 
 <script type="module">
-    // --- 1. FIREBASE CONFIGURATION ---
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
    
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-     const firebaseConfig = {
-      apiKey: "AIzaSyDcWwo0m2eS1ndyC06U1G_JF1J7Y1WNlfQ",
-      authDomain: "triotrack-66dd6.firebaseapp.com",
-      projectId: "triotrack-66dd6",
-      storageBucket: "triotrack-66dd6.firebasestorage.app",
-      messagingSenderId: "994389952848",
-      appId: "1:994389952848:web:659fbc330f2d660dfb0455",
-      measurementId: "G-B7TMFX0F21"
-    };
-
-
     console.log("Admin Panel Loaded");
 
     // --- 2. TAB SWITCHING LOGIC ---
