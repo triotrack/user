@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .nav-link { cursor: pointer; }
+    </style>
+</head>
+<body class="bg-light">
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <h2>Admin Dashboard</h2>
+        <div id="system-status" class="badge bg-success">System Ready</div>
+    </div>
+    <hr>
+    
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link active" id="tab-route">Add Bus Route</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="tab-driver">Create Driver Account</a>
+        </li>
+    </ul>
+
+    <div id="route-section">
+        <div class="card p-4 shadow-sm">
+            <h5>Add New Bus Route</h5>
+            <form id="routeForm">
+                <div class="row mb-3">
+                    <div class="col"><input type="text" id="busName" class="form-control" placeholder="Bus Name (e.g. SuperFast)" required></div>
+                    <div class="col"><input type="text" id="busNumber" class="form-control" placeholder="Bus Number (e.g. KL-01)" required></div>
+                </div>
+                <div class="mb-3">
+                    <select id="category" class="form-select">
+                        <option>Public Bus (KSRTC)</option>
+                        <option>Private Bus</option>
+                    </select>
+                </div>
+                
+                <h6>Stops</h6>
+                <div id="stops-container">
+                    <div class="input-group mb-2">
+                        <span class="input-group-text">Start</span>
+                        <input type="text" id="startPoint" class="form-control" placeholder="Start Location">
+                        <input type="time" id="startTime" class="form-control">
+                    </div>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text">Stop 1</span>
+                        <input type="text" class="form-control stop-loc" placeholder="Intermediate Stop">
+                        <input type="time" class="form-control stop-time">
+                    </div>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text">Stop 2</span>
+                        <input type="text" class="form-control stop-loc" placeholder="Intermediate Stop">
+                        <input type="time" class="form-control stop-time">
+                    </div>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text">End</span>
+                        <input type="text" id="endPoint" class="form-control" placeholder="Destination">
+                        <input type="time" id="endTime" class="form-control">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-dark w-100">Save Route</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="driver-section" class="d-none">
+        <div class="card p-4 border-warning shadow-sm">
+            <h5>Create Driver Login</h5>
+            <p class="text-muted small">Create credentials for drivers to use in the driver app.</p>
+            <form id="driverForm">
+                <div class="mb-3">
+                    <label>Bus Number (Username)</label>
+                    <input type="text" id="driverBusID" class="form-control" placeholder="e.g. KL-01" required>
+                </div>
+                <div class="mb-3">
+                    <label>Set Password</label>
+                    <input type="text" id="driverPass" class="form-control" placeholder="e.g. 1234" required>
+                </div>
+                <button type="submit" class="btn btn-warning w-100">Create Account</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+   
+    console.log("Admin Panel Loaded");
+
+    // --- 2. TAB SWITCHING LOGIC ---
+    document.getElementById('tab-route').addEventListener('click', () => {
+        document.getElementById('route-section').classList.remove('d-none');
+        document.getElementById('driver-section').classList.add('d-none');
+        document.getElementById('tab-route').classList.add('active');
+        document.getElementById('tab-driver').classList.remove('active');
+    });
+
+    document.getElementById('tab-driver').addEventListener('click', () => {
+        document.getElementById('route-section').classList.add('d-none');
+        document.getElementById('driver-section').classList.remove('d-none');
+        document.getElementById('tab-route').classList.remove('active');
+        document.getElementById('tab-driver').classList.add('active');
+    });
+
+    // --- 3. FORM SUBMISSION: CREATE DRIVER ---
+    document.getElementById('driverForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const busID = document.getElementById('driverBusID').value.toUpperCase().trim();
+        const pass = document.getElementById('driverPass').value.trim();
+        
+        try {
+            await setDoc(doc(db, "credentials", busID), { password: pass });
+            alert("Driver Account Created Successfully for " + busID);
+            e.target.reset();
+        } catch (error) {
+            alert("Error: " + error.message);
+        }
+    });
+
+    // --- 4. FORM SUBMISSION: SAVE ROUTE ---
+    document.getElementById('routeForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        let stops = [];
+        
+        // Add Start
+        stops.push({ name: document.getElementById('startPoint').value, time: document.getElementById('startTime').value });
+        
+        // Add Intermediate Stops
+        document.querySelectorAll('#stops-container .input-group').forEach(div => {
+            if(div.querySelector('.stop-loc')) {
+                const loc = div.querySelector('.stop-loc').value;
+                const time = div.querySelector('.stop-time').value;
+                if(loc && time) stops.push({ name: loc, time: time });
+            }
+        });
+        
+        // Add End
+        stops.push({ name: document.getElementById('endPoint').value, time: document.getElementById('endTime').value });
+
+        const busData = {
+            busName: document.getElementById('busName').value,
+            busNumber: document.getElementById('busNumber').value.toUpperCase(),
+            category: document.getElementById('category').value,
+            route: stops,
+            searchKeywords: stops.map(s => s.name.toLowerCase().trim())
+        };
+
+        try {
+            await addDoc(collection(db, "routes"), busData);
+            alert("Bus Route Saved Successfully!");
+            e.target.reset();
+        } catch (err) {
+            console.error(err);
+            alert("Error saving route: " + err.message);
+        }
+    });
+</script>
+</body>
+</html>
