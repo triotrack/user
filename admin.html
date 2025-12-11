@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #212529; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        .nav-link { cursor: pointer; }
+    </style>
+</head>
+<body class="bg-light">
+
+<div id="login-overlay">
+    <div class="card p-4 text-center" style="width: 300px;">
+        <h4>Admin Login</h4>
+        <input type="password" id="adminPass" class="form-control mb-3" placeholder="Enter Password">
+        <button onclick="checkAdmin()" class="btn btn-primary w-100">Login</button>
+        <p class="text-danger mt-2 small" id="loginMsg"></p>
+    </div>
+</div>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <h2>Admin Dashboard</h2>
+        <button onclick="location.reload()" class="btn btn-outline-danger btn-sm">Logout</button>
+    </div>
+    <hr>
+    
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item"><a class="nav-link active" onclick="switchTab('route')">Add Bus Route</a></li>
+        <li class="nav-item"><a class="nav-link" onclick="switchTab('driver')">Create Driver Account</a></li>
+    </ul>
+
+    <div id="route-section">
+        <div class="card p-4">
+            <h5>Add New Route</h5>
+            <form id="busForm">
+                <div class="row mb-3">
+                    <div class="col"><input type="text" id="busName" class="form-control" placeholder="Bus Name (e.g. SuperFast)" required></div>
+                    <div class="col"><input type="text" id="busNumber" class="form-control" placeholder="Bus Number (e.g. KL-01)" required></div>
+                </div>
+                <div class="mb-3">
+                    <select id="category" class="form-select">
+                        <option>Public Bus (KSRTC)</option>
+                        <option>Private Bus</option>
+                    </select>
+                </div>
+                
+                <h6>Stops (Include Start & End)</h6>
+                <div id="stops-container">
+                    <div class="input-group mb-2">
+                        <span class="input-group-text">Start</span>
+                        <input type="text" id="startPoint" class="form-control" placeholder="Starting Location">
+                        <input type="time" id="startTime" class="form-control">
+                    </div>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text">Stop 1</span>
+                        <input type="text" class="form-control stop-loc" placeholder="Intermediate Stop">
+                        <input type="time" class="form-control stop-time">
+                    </div>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text">Stop 2</span>
+                        <input type="text" class="form-control stop-loc" placeholder="Intermediate Stop">
+                        <input type="time" class="form-control stop-time">
+                    </div>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text">End</span>
+                        <input type="text" id="endPoint" class="form-control" placeholder="Destination">
+                        <input type="time" id="endTime" class="form-control">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-dark w-100">Save Route</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="driver-section" class="d-none">
+        <div class="card p-4 border-warning">
+            <h5>Create Driver Login</h5>
+            <p class="text-muted small">Drivers use these details to login to the driver portal.</p>
+            <form id="driverForm">
+                <div class="mb-3">
+                    <label>Bus Number (Username)</label>
+                    <input type="text" id="driverBusID" class="form-control" placeholder="e.g. KL-01-AB-1234" required>
+                </div>
+                <div class="mb-3">
+                    <label>Password</label>
+                    <input type="text" id="driverPass" class="form-control" placeholder="e.g. 1234" required>
+                </div>
+                <button type="submit" class="btn btn-warning w-100">Create Account</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { db } from './firebase-config.js';
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDcWwo0m2eS1ndyC06U1G_JF1J7Y1WNlfQ",
+  authDomain: "triotrack-66dd6.firebaseapp.com",
+  projectId: "triotrack-66dd6",
+  storageBucket: "triotrack-66dd6.firebasestorage.app",
+  messagingSenderId: "994389952848",
+  appId: "1:994389952848:web:659fbc330f2d660dfb0455",
+  measurementId: "G-B7TMFX0F21"
+};
+
+    import { collection, addDoc, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // 1. Admin Login
+    window.checkAdmin = function() {
+        if(document.getElementById('adminPass').value === "admin123") { 
+            document.getElementById('login-overlay').style.display = "none";
+        } else {
+            document.getElementById('loginMsg').innerText = "Wrong Password";
+        }
+    }
+
+    // 2. Tab Switching
+    window.switchTab = function(tab) {
+        if(tab === 'route') {
+            document.getElementById('route-section').classList.remove('d-none');
+            document.getElementById('driver-section').classList.add('d-none');
+            document.querySelectorAll('.nav-link')[0].classList.add('active');
+            document.querySelectorAll('.nav-link')[1].classList.remove('active');
+        } else {
+            document.getElementById('route-section').classList.add('d-none');
+            document.getElementById('driver-section').classList.remove('d-none');
+            document.querySelectorAll('.nav-link')[0].classList.remove('active');
+            document.querySelectorAll('.nav-link')[1].classList.add('active');
+        }
+    }
+
+    // 3. Create Driver Credentials
+    document.getElementById('driverForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const busID = document.getElementById('driverBusID').value.toUpperCase().trim();
+        const pass = document.getElementById('driverPass').value.trim();
+        try {
+            await setDoc(doc(db, "credentials", busID), { password: pass });
+            alert("Driver Account Created!");
+            e.target.reset();
+        } catch (error) { alert("Error: " + error.message); }
+    });
+
+    // 4. Save Bus Route
+    document.getElementById('busForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        let stops = [];
+        
+        // Add Start
+        stops.push({ name: document.getElementById('startPoint').value, time: document.getElementById('startTime').value });
+        
+        // Add Middle Stops
+        document.querySelectorAll('#stops-container .input-group').forEach(div => {
+            if(div.querySelector('.stop-loc')) {
+                const loc = div.querySelector('.stop-loc').value;
+                const time = div.querySelector('.stop-time').value;
+                if(loc && time) stops.push({ name: loc, time: time });
+            }
+        });
+        
+        // Add End
+        stops.push({ name: document.getElementById('endPoint').value, time: document.getElementById('endTime').value });
+
+        const busData = {
+            busName: document.getElementById('busName').value,
+            busNumber: document.getElementById('busNumber').value.toUpperCase(),
+            category: document.getElementById('category').value,
+            route: stops,
+            searchKeywords: stops.map(s => s.name.toLowerCase().trim())
+        };
+
+        try {
+            await addDoc(collection(db, "routes"), busData);
+            alert("Route Saved Successfully!");
+            e.target.reset();
+        } catch (err) { alert("Error saving route"); }
+    });
+</script>
+</body>
+</html>
