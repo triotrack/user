@@ -94,7 +94,11 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    const firebaseConfig = {
+   
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+     const firebaseConfig = {
       apiKey: "AIzaSyDcWwo0m2eS1ndyC06U1G_JF1J7Y1WNlfQ",
       authDomain: "triotrack-66dd6.firebaseapp.com",
       projectId: "triotrack-66dd6",
@@ -104,8 +108,6 @@
       measurementId: "G-B7TMFX0F21"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
 
     console.log("Admin Panel Loaded");
 
